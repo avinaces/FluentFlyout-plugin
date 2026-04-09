@@ -1,0 +1,22 @@
+<Page x:Class="FluentFlyoutWPF.Pages.MusicthingyPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      Title="Musicthingy Integration">
+    <StackPanel Margin="16">
+        <TextBlock Text="Musicthingy Integration" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,20" />
+
+        <ui:CardControl Icon="{ui:SymbolIcon Link24}" Margin="0,0,0,12">
+            <ui:CardControl.Header>
+                <StackPanel Orientation="Vertical">
+                    <TextBlock Text="Plugin Mode Status" FontSize="14" FontWeight="SemiBold" />
+                    <TextBlock Text="If active, FluentFlyout is being controlled by your Python server." Opacity="0.5" />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <!-- You can bind this to PythonBridge.IsPluginMode if you expose it to a ViewModel -->
+            <TextBlock Text="Connected" Foreground="Green" FontWeight="Bold" />
+        </ui:CardControl>
+
+        <TextBlock Text="When launched via the Python app, system media controls are disabled to prevent conflicts." Opacity="0.6" TextWrapping="Wrap" />
+    </StackPanel>
+</Page>

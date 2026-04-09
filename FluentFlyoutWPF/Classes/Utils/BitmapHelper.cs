@@ -4,6 +4,7 @@
 using FluentFlyout.Classes.Settings;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Media;
@@ -103,6 +104,46 @@ internal static class BitmapHelper
     public static List<SolidColorBrush> SavedDominantColors
     {
         get => _currentDominantColors ??= [];
+    }
+
+    public static async Task<BitmapImage?> GetThumbnailFromUrlAsync(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.DecodePixelWidth = _maxThumbnailSize;
+
+            if (url.StartsWith("data:image"))
+            {
+                // Handle Base64 string
+                var base64Data = url.Substring(url.IndexOf(',') + 1);
+                var imageBytes = Convert.FromBase64String(base64Data);
+                using var stream = new MemoryStream(imageBytes);
+                bitmap.StreamSource = stream;
+                bitmap.EndInit();
+            }
+            else
+            {
+                // Handle HTTP URL
+                using var httpClient = new HttpClient();
+                var imageBytes = await httpClient.GetByteArrayAsync(url);
+                using var stream = new MemoryStream(imageBytes);
+                bitmap.StreamSource = stream;
+                bitmap.EndInit();
+            }
+
+            bitmap.Freeze();
+            return bitmap;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, "Failed to load image from URL: " + url);
+            return null;
+        }
     }
 
     public static int GetStableThumbnailHash(IRandomAccessStreamReference thumbnail)

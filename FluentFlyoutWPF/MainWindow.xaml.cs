@@ -79,6 +79,12 @@ public partial class MainWindow : MicaWindow
     public MainWindow()
     {
         DataContext = SettingsManager.Current;
+
+        // 1. Check if launched by Python
+        string[] args = Environment.GetCommandLineArgs();
+        bool isPluginMode = args.Contains("--plugin");
+        PythonBridge.Initialize(isPluginMode);
+
         WindowHelper.SetNoActivate(this); // prevents some fullscreen apps from minimizing
         InitializeComponent();
         WindowHelper.SetTopmost(this); // more prevention of fullscreen apps minimizing
@@ -202,6 +208,39 @@ public partial class MainWindow : MicaWindow
             // check for updates on startup
             _ = CheckForUpdatesOnStartupAsync();
         });
+
+        // 2. ONLY start the Windows Media Manager if NOT in plugin mode
+        if (!PythonBridge.IsPluginMode)
+        {
+            mediaManager.Start();
+        }
+        else
+        {
+            // 3. Listen to Python server updates instead!
+            PythonBridge.OnStateUpdated += (title, artist, icon, isPlaying) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    SongTitle.Text = title;
+                    SongArtist.Text = artist;
+                    SongImage.ImageSource = icon;
+
+                    // Update Play/Pause button UI
+                    SymbolPlayPause.Symbol = isPlaying ? Wpf.Ui.Controls.SymbolRegular.Pause16 : Wpf.Ui.Controls.SymbolRegular.Play16;
+                  
+                    // Update the Taskbar Widget too!
+                    var status = isPlaying ?
+                        GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing :
+                        GlobalSystemMediaTransportControlsSessionPlaybackStatus.Paused;
+
+                    // Get colors from the new icon for the UI tint
+                    // (Optional: You can adapt GetDominantColors to accept a BitmapImage if needed)
+                    taskbarWindow?.UpdateUi(title, artist, icon, status, null);
+                });
+            };
+        }
+
+
     }
 
     private async Task CheckForUpdatesOnStartupAsync()
@@ -1091,18 +1130,17 @@ public partial class MainWindow : MicaWindow
 
     private async void Back_Click(object sender, RoutedEventArgs e)
     {
-        if (mediaManager.GetFocusedSession() == null)
-            return;
-
+        if (PythonBridge.IsPluginMode) { await PythonBridge.SendCommandAsync("previous"); return; }
+        if (mediaManager.GetFocusedSession() == null) return;
         await mediaManager.GetFocusedSession().ControlSession.TrySkipPreviousAsync();
     }
 
-    private void PlayPause_Click(object sender, RoutedEventArgs e)
+    private async void PlayPause_Click(object sender, RoutedEventArgs e)
     {
-        keybd_event(0xB3, 0, 0, IntPtr.Zero);
+        if (PythonBridge.IsPluginMode) { await PythonBridge.SendCommandAsync("toggle"); return; }
 
-        if (mediaManager.GetFocusedSession() == null)
-            return;
+        keybd_event(0xB3, 0, 0, IntPtr.Zero);
+        if (mediaManager.GetFocusedSession() == null) return;
 
         //var controlsInfo = mediaManager.GetFocusedSession().ControlSession.GetPlaybackInfo().Controls;
 
@@ -1120,9 +1158,8 @@ public partial class MainWindow : MicaWindow
 
     private async void Forward_Click(object sender, RoutedEventArgs e)
     {
-        if (mediaManager.GetFocusedSession() == null)
-            return;
-
+        if (PythonBridge.IsPluginMode) { await PythonBridge.SendCommandAsync("skip"); return; }
+        if (mediaManager.GetFocusedSession() == null) return;
         await mediaManager.GetFocusedSession().ControlSession.TrySkipNextAsync();
     }
 
