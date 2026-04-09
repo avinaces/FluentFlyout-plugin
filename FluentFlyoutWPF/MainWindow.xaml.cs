@@ -112,6 +112,44 @@ public partial class MainWindow : MicaWindow
 
         Logger.Info("Starting FluentFlyout MainWindow");
 
+        // 2. ONLY start the Windows Media Manager if NOT in plugin mode
+        if (!PythonBridge.IsPluginMode)
+        {
+            mediaManager.Start();
+        }
+        else
+        {
+            // 3. Listen to Python server updates instead!
+            PythonBridge.OnStateUpdated += (title, artist, icon, isPlaying) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    SongTitle.Text = title;
+                    SongArtist.Text = artist;
+                    SongImage.ImageSource = icon;
+
+                    // Update Play/Pause button UI and ENABLE the buttons explicitly
+                    SymbolPlayPause.Symbol = isPlaying ? Wpf.Ui.Controls.SymbolRegular.Pause16 : Wpf.Ui.Controls.SymbolRegular.Play16;
+
+                    ControlPlayPause.IsEnabled = true;
+                    ControlPlayPause.Opacity = 1;
+
+                    ControlBack.IsEnabled = true;
+                    ControlBack.Opacity = 1;
+
+                    ControlForward.IsEnabled = true;
+                    ControlForward.Opacity = 1;
+
+                    // Update the Taskbar Widget too!
+                    var status = isPlaying ?
+                        GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing :
+                        GlobalSystemMediaTransportControlsSessionPlaybackStatus.Paused;
+
+                    taskbarWindow?.UpdateUi(title, artist, icon, status, null);
+                });
+            };
+        }
+
         // in the existing instance, listen for the signal to open settings
         Task.Run(() =>
         {
@@ -157,7 +195,6 @@ public partial class MainWindow : MicaWindow
 
         cts = new CancellationTokenSource();
 
-        mediaManager.Start();
 
         _hookProc = HookCallback;
         _hookId = SetHook(_hookProc);
@@ -209,36 +246,7 @@ public partial class MainWindow : MicaWindow
             _ = CheckForUpdatesOnStartupAsync();
         });
 
-        // 2. ONLY start the Windows Media Manager if NOT in plugin mode
-        if (!PythonBridge.IsPluginMode)
-        {
-            mediaManager.Start();
-        }
-        else
-        {
-            // 3. Listen to Python server updates instead!
-            PythonBridge.OnStateUpdated += (title, artist, icon, isPlaying) =>
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    SongTitle.Text = title;
-                    SongArtist.Text = artist;
-                    SongImage.ImageSource = icon;
-
-                    // Update Play/Pause button UI
-                    SymbolPlayPause.Symbol = isPlaying ? Wpf.Ui.Controls.SymbolRegular.Pause16 : Wpf.Ui.Controls.SymbolRegular.Play16;
-                  
-                    // Update the Taskbar Widget too!
-                    var status = isPlaying ?
-                        GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing :
-                        GlobalSystemMediaTransportControlsSessionPlaybackStatus.Paused;
-
-                    // Get colors from the new icon for the UI tint
-                    // (Optional: You can adapt GetDominantColors to accept a BitmapImage if needed)
-                    taskbarWindow?.UpdateUi(title, artist, icon, status, null);
-                });
-            };
-        }
+        
 
 
     }
@@ -549,6 +557,7 @@ public partial class MainWindow : MicaWindow
 
     private void CurrentSession_OnPlaybackStateChanged(MediaSession mediaSession, GlobalSystemMediaTransportControlsSessionPlaybackInfo? playbackInfo = null)
     {
+        if (PythonBridge.IsPluginMode) return;
 #if DEBUG
         Logger.Debug("Playback state changed: " + mediaSession.Id + " " + mediaSession.ControlSession.GetPlaybackInfo().PlaybackStatus);
 #endif     
@@ -581,6 +590,7 @@ public partial class MainWindow : MicaWindow
     private int previousMediaPropertyThumbnail = 0;
     private void MediaManager_OnAnyMediaPropertyChanged(MediaSession mediaSession, GlobalSystemMediaTransportControlsSessionMediaProperties mediaProperties)
     {
+        if (PythonBridge.IsPluginMode) return;
         // sometimes mediaSession.ControlSession can be null
         if (mediaSession.ControlSession == null)
             return;
@@ -669,6 +679,7 @@ public partial class MainWindow : MicaWindow
 
     private void MediaManager_OnAnyTimelinePropertyChanged(MediaSession mediaSession, GlobalSystemMediaTransportControlsSessionTimelineProperties timelineProperties)
     {
+        if (PythonBridge.IsPluginMode) return;
         _lastSelfUpdateTimestamp = DateTime.Now;
 
         if (mediaManager.GetFocusedSession() is not { } session) return;

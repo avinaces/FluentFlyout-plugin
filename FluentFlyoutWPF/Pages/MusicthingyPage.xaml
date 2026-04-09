@@ -1,22 +1,66 @@
-<Page x:Class="FluentFlyoutWPF.Pages.MusicthingyPage"
+﻿<Page x:Class="FluentFlyoutWPF.Pages.MusicthingyPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-      Title="Musicthingy Integration">
-    <StackPanel Margin="16">
+      xmlns:utils="clr-namespace:FluentFlyout.Classes.Utils"
+      mc:Ignorable="d"
+      d:DesignHeight="600" d:DesignWidth="800"
+      Title="Musicthingy Integration"
+      Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+
+    <StackPanel MaxWidth="1000" Margin="16">
+        <!-- Page Title -->
         <TextBlock Text="Musicthingy Integration" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,20" />
 
-        <ui:CardControl Icon="{ui:SymbolIcon Link24}" Margin="0,0,0,12">
+        <!-- Top Description Card (Matches TaskbarWidgetPage style) -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+            <ui:SymbolIcon Symbol="Link24" FontSize="48" Margin="0,0,12,0" VerticalAlignment="Top"/>
+            <TextBlock FontSize="14" FontWeight="Regular" Opacity="0.75" MaxWidth="500" TextWrapping="Wrap" 
+                       Text="This plugin allows FluentFlyout to be controlled directly by your Python + JS application. When active, it bypasses the Windows System Media provider to display data sent from your custom server." />
+        </StackPanel>
+
+        <!-- Status Card -->
+        <ui:CardControl Margin="0,0,0,12">
             <ui:CardControl.Header>
                 <StackPanel Orientation="Vertical">
-                    <TextBlock Text="Plugin Mode Status" FontSize="14" FontWeight="SemiBold" />
-                    <TextBlock Text="If active, FluentFlyout is being controlled by your Python server." Opacity="0.5" />
+                    <TextBlock Text="Bridge Status" FontSize="14" FontWeight="Regular" VerticalAlignment="Center" />
+                    <TextBlock Text="Current connection state to the Python devserver" FontSize="12" Opacity="0.5" />
                 </StackPanel>
             </ui:CardControl.Header>
-            <!-- You can bind this to PythonBridge.IsPluginMode if you expose it to a ViewModel -->
-            <TextBlock Text="Connected" Foreground="Green" FontWeight="Bold" />
+
+            <!-- Dynamic Status Text -->
+            <TextBlock FontWeight="Bold" VerticalAlignment="Center">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <!-- Default: Standalone -->
+                        <Setter Property="Text" Value="Standalone Mode" />
+                        <Setter Property="Foreground" Value="Gray" />
+                        <Style.Triggers>
+                            <!-- If Plugin Mode is True -->
+                            <DataTrigger Binding="{Binding Source={x:Static utils:PythonBridge.IsPluginMode}}" Value="True">
+                                <Setter Property="Text" Value="Connected (Plugin Mode)" />
+                                <Setter Property="Foreground" Value="#2ecc71" />
+                                <!-- Green -->
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
         </ui:CardControl>
 
-        <TextBlock Text="When launched via the Python app, system media controls are disabled to prevent conflicts." Opacity="0.6" TextWrapping="Wrap" />
+        <!-- Warning InfoBar (Matches your TaskbarWidgetPage style) -->
+        <ui:InfoBar Title="Control Conflict" 
+                    Message="When launched via Python, system media keys (Play/Pause/Skip) are routed to the Python app first. Standalone Windows Media Manager is disabled." 
+                    IsOpen="True" 
+                    Severity="Informational" 
+                    IsClosable="False" 
+                    Margin="0,0,0,24" />
+
+        <!-- Additional Help / Instruction Text -->
+        <TextBlock Text="Troubleshooting" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10" />
+        <TextBlock Text="If the status shows 'Standalone Mode' even when launched from the Python app, ensure you are passing the --plugin argument in your subprocess.Popen call." 
+                   Opacity="0.6" TextWrapping="Wrap" FontSize="13" />
     </StackPanel>
 </Page>
